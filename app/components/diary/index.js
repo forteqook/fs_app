@@ -14,32 +14,70 @@
    ScrollView,
    Image,
    TouchableOpacity,
-   Dimensions
+   Dimensions,
+   Button,
+   BackHandler
  } from 'react-native';
  import {connect} from 'react-redux';
  import { bindActionCreators } from 'redux';
  import {getDiaries} from '../../store/actions/diary_actions';
  import TextTruncate from 'react-native-text-truncate';
+ import { autoSignIn } from '../../store/actions/user_actions';
+ import { getTokens, setTokens, auth, removeTokens } from '../../utils/misc';
+ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { signOut } from 'firebase/auth';
 
  const screenHeight = Dimensions.get('window').height;
  const screenWidth = Dimensions.get('window').width;
  
  class DiaryComponent extends Component {
-   componentDidMount() {
-     this.props.getDiaries()
+   state = {
+     isAuth: true
    }
 
-   renderDiary = (Diaries) => (
+   manageState = (isAuth) => {
+     this.setState({
+       isAuth
+     })
+   }
+
+   componentDidMount() {
+    getTokens((value)=>{
+        if(value[1][1] === null) {
+            this.manageState(false)
+        }
+        else {
+            this.props.autoSignIn(value[2][1]).then(()=>{
+                if(!this.props.User.auth.token) {
+                  this.manageState(false)
+                }
+                else {
+                    setTokens(this.props.User.auth, ()=>{
+                      this.manageState(true)
+                      this.props.getDiaries(this.props.User);
+                    })
+                }
+            })
+        }
+    });
+
+    BackHandler.addEventListener('hardwareBackPress', ()=>{
+      return true
+    })
+   }
+
+   renderDiary = (Diaries, User) => (
      Diaries.documents ?
      Diaries.documents.map((item, index)=>(
        <TouchableOpacity
        key={index}
        onPress={()=>{
-         this.props.navigation.navigate('DiaryDocu',{
+         this.props.navigation.push('DiaryDocu',{
            newDiary:false,
            diaryData: item,
            index: index,
-           id: item.data.id
+           id: item.data.id,
+           userId: User.auth.userId
          })
        }}
        >
@@ -109,20 +147,66 @@
      }
    }
 
+   headerStyle = () => {
+     this.props.navigation.setOptions({
+       headerRight: () => (
+         <TouchableOpacity
+           style={{flexDirection: 'row', paddingRight: 15, paddingBottom: 5}}
+           onPress={()=>{
+             signOut(auth)
+             .then(()=>{
+                removeTokens(()=>{
+                  this.props.navigation.navigate('SignIn')
+                })
+             }).catch((error)=>{
+               alert('Logout Failed!!', error.message)
+             })
+           }}
+         >
+           <Image
+             source={require('../../assets/images/logout.png')}
+             style={{resizeMode: 'contain', width: 23, height: 23}}
+           />
+         </TouchableOpacity>
+       )
+     })
+   }
+
    render () {
+     this.headerStyle()
      return (
        <View>
+         {this.state.isAuth ?
          <ScrollView>
-           {this.renderDiary(this.props.Diaries)}
+           <View style={{flexDirection: 'column-reverse'}}>
+             {this.renderDiary(this.props.Diaries, this.props.User)}
+           </View>
          </ScrollView>
+         :
+         <View style={{height:'100%', backgroundColor: '#ccc', alignItems: 'center', justifyContent: 'center'}}>
+           <Icon
+             name='emoticon-sad-outline'
+             size={100}
+             color='#48567f'
+           />
+           <Text style={{margin:20, fontSize:17}}>로그인이 필요한 화면입니다.</Text>
+           <Button
+             title="로그인 / 회원가입"
+             color="#48567f"
+             onPress={()=>this.props.navigation.navigate('SignIn')}
+           />
+         </View>
+         }
 
+         {this.state.isAuth ?
          <TouchableOpacity
          style={{position:'absolute', left: screenWidth*0.8, top: screenHeight*0.7}}
          onPress={()=>{
-           this.props.navigation.navigate('DiaryDocu',{
+           this.props.navigation.push('DiaryDocu',{
              newDiary: true,
              index: this.props.Diaries.documents.length,
-             id: this.checkNextID(this.props.Diaries)
+             id: this.checkNextID(this.props.Diaries),
+             userId: this.props.User.auth.userId
            })
          }}
          >
@@ -131,6 +215,7 @@
            style={{width:50, height:50, resizeMode: 'contain'}}
            />
          </TouchableOpacity>
+         : null }
        </View>
      )
    }
@@ -164,12 +249,13 @@
 
  function mapStateToProps(state) {
    return {
-     Diaries: state.Diaries
+     Diaries: state.Diaries,
+     User: state.User
    }
  }
 
  function mapDispatchToProps(dispatch) {
-   return bindActionCreators({getDiaries}, dispatch)
+   return bindActionCreators({getDiaries, autoSignIn}, dispatch)
  }
  
  export default connect(mapStateToProps, mapDispatchToProps)(DiaryComponent);

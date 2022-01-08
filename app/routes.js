@@ -9,6 +9,7 @@ import News from './components/news';
 
 import DiaryDocu from './components/diary/diaryDocu';
 import Logo from './utils/logo';
+import Loading from './components/auth/loading';
 
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -24,6 +25,16 @@ const headerConfig = {
         backgroundColor: '#7487C5',
     },
     headerTitle:Logo,
+}
+
+const headerConfig_ = {
+    headerTitleAlign: 'center',
+    headerTintColor: '#fff',
+    headerStyle:{
+        backgroundColor: '#7487C5',
+    },
+    headerTitle:Logo,
+    headerLeft: null
 }
 
 /*
@@ -55,7 +66,7 @@ const TabBarIcon = (focused, name) => {
 const DiaryStackComponent = () => {
     return (
         <DiaryStack.Navigator>
-            <DiaryStack.Screen name="Diary" component={Diary} options={headerConfig}/>
+            <DiaryStack.Screen name="Diary" component={Diary} options={headerConfig_}/>
             <DiaryStack.Screen name="DiaryDocu" component={DiaryDocu} options={headerConfig}/>
         </DiaryStack.Navigator>
     )
@@ -64,7 +75,7 @@ const DiaryStackComponent = () => {
 const NewsStackComponent = () => {
     return (
         <NewsStack.Navigator>
-            <NewsStack.Screen name="News" component={News} options={headerConfig}/>
+            <NewsStack.Screen name="News" component={News} options={headerConfig_}/>
         </NewsStack.Navigator>
     )
 }
@@ -96,15 +107,9 @@ const AppTabComponent = () => {
 export const RootNavigator = () => {
     return (
         <AuthStack.Navigator screenOptions={{headerShown: false}}>
-            {isLoggedIn ? (
-                <AuthStack.Screen name="Main" component={AppTabComponent}/>
-            ) : (
-                <>
-                    <AuthStack.Screen name="SignIn" component={SignIn}/>
-                    <AuthStack.Screen name="AppTabComponent" component={AppTabComponent}/>
-                </>
-
-            )}
+            <AuthStack.Screen name="Loading" component={Loading}/>
+            <AuthStack.Screen name="SignIn" component={SignIn} options={()=>({gestureEnabled:false})}/>
+            <AuthStack.Screen name="AppTabComponent" component={AppTabComponent} options={()=>({gestureEnabled:false})}/>
         </AuthStack.Navigator>
     )
 }

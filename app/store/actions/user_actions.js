@@ -6,10 +6,11 @@ import {
 import {
     SIGNUP,
     SIGNIN,
-    REFRESH
+    REFRESH,
+    auth
 } from '../../utils/misc';
-
 import axios from 'axios';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 export const autoSignIn = (refToken) => {
     const request = axios({
@@ -32,7 +33,16 @@ export const autoSignIn = (refToken) => {
     }
 }
 
+firebaseLogin = async (email, password) => {
+    try {
+        let user = await signInWithEmailAndPassword(auth, email, password);
+    } catch (error) {
+    }
+}
+
 export function signIn(data) {
+    firebaseLogin(data.email, data.password);
+
     const request = axios({
         method: 'POST',
         url: SIGNIN,

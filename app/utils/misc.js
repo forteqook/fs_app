@@ -6,6 +6,7 @@ export const REFRESH = `https://securetoken.googleapis.com/v1/token?key=${APIKEY
 import { initializeApp } from "firebase/app";
 import {getStorage} from "firebase/storage";
 import {getDatabase} from "firebase/database";
+import {getAuth} from "firebase/auth";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
@@ -22,6 +23,7 @@ const app =  initializeApp(firebaseConfig);
 
 export const storage = getStorage(app);
 export const database = getDatabase(app);
+export const auth = getAuth();
 
 export const setTokens = async (values, callBack) => {
     const firstPair = ["@fsApp@userId", values.userId]
@@ -53,3 +55,16 @@ export const setTokens = async (values, callBack) => {
     // [ ['@MyApp_user', 'myUserValue'], ['@MyApp_key', 'myKeyValue'] ]
   }
   
+  export const removeTokens = async (callBack) => {
+    try {
+      await AsyncStorage.multiRemove([
+        '@fsApp@userId',
+        '@fsApp@token',
+        '@fsApp@refToken'
+      ]).then(()=>{
+        callBack()
+      })
+    } catch (e) {
+ 
+    }
+  }

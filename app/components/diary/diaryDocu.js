@@ -20,10 +20,20 @@
    TouchableWithoutFeedback,
    Keyboard
  } from 'react-native';
- import {ref, getDownloadURL} from "firebase/storage";
+ import {getDownloadURL,
+   ref as storageReference,
+   uploadBytes,
+   deleteObject} from "firebase/storage";
+ import {set,
+   ref as databaseReference,
+   child,
+   remove} from "firebase/database";
  import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
+ import Spinner from 'react-native-loading-spinner-overlay';
  
- import {storage, database} from '../../utils/misc';
+ import {
+   storage,
+   database} from '../../utils/misc';
  
  class DiaryDocu extends Component {
    constructor(props) {
@@ -33,6 +43,7 @@
      !params.newDiary ?
      this.state = {
        newDiary: false,
+       isLoading: false,
        index: params.index,
        diaryData: {
          id: params.diaryData.data.id,
@@ -41,10 +52,12 @@
          description: params.diaryData.data.description,
          imagePath: params.diaryData.data.imagePath
        },
-       image: ''
+       image: '',
+       userId: params.userId,
      }
    : this.state = {
        newDiary: true,
+       isLoading: false,
        index: params.index,
        diaryData: {
          id: params.id,
@@ -52,7 +65,8 @@
          title: '',
          description: '',
          imagePath: ''
-       }
+       },
+       userId: params.userId,
      }
      
      !params.newDiary && params.diaryData.data.imagePath ? (
@@ -64,7 +78,7 @@
      if (item==='date') {
        this.setState(prevState=>({
          diaryData: {
-          ...prevState,
+          ...prevState.diaryData,
           date: value
          }
        }))
@@ -72,7 +86,7 @@
      else if (item==='title') {
       this.setState(prevState=>({
         diaryData: {
-          ...prevState,
+          ...prevState.diaryData,
           title: value
         }
       }))
@@ -80,7 +94,7 @@
      else if (item==='description') {
       this.setState(prevState=>({
         diaryData: {
-          ...prevState,
+          ...prevState.diaryData,
           description: value
         }
       }))
@@ -88,7 +102,7 @@
    }
 
    getImage = () => {
-    getDownloadURL(ref(storage, `diaryImage/index${this.state.diaryData.id}/image.jpg`))
+    getDownloadURL(storageReference(storage, `diaryImage/${this.state.userId}/${this.state.diaryData.imagePath}/image.jpg`))
     .then(url=>{
       this.setState({
         image: url
@@ -113,16 +127,88 @@
     }))
    }
 
-   deleteData = () => {
+   deleteData = async () => {
+     const id = this.state.diaryData.id;
+     const userId = this.state.userId;
 
+     const databaseDirectory = `diary/${userId}/${id}`;
+     const databaseRef = child(databaseReference(database, databaseDirectory), 'data');
+
+     const storageDirectory = `diaryImage/${userId}/index${id}/image.jpg`;
+     const storageRef = storageReference(storage, storageDirectory);
+
+     try {
+       await remove(databaseRef);
+       await getDownloadURL(storageRef)
+       .then(()=>{
+         deleteObject(storageRef).then(()=>{
+           this.props.navigation.push('Diary')
+         })
+       })
+       .catch(()=>{
+        this.props.navigation.push('Diary')
+      })
+     } catch(error) {
+       alert("삭제 실패 : "+error.message)
+     }
    }
    
    updateData = () => {
-     
+     this.setState({
+       newDiary: true
+     })
    }
 
-   createData = () => {
-     
+   createData = async () => {
+     this.setState({
+       isLoading: true
+     })
+
+     const userId = this.state.userId;
+     const data = this.state.diaryData;
+     const id = data.id;
+
+     const databaseDirectory = `diary/${userId}/${id}`
+     const databaseRef = databaseReference(database, databaseDirectory)
+     const storageDirectory = `diaryImage/${userId}/index${id}/image.jpg`
+
+     try {
+       await set(databaseRef, {data});
+       this.uploadImage(storageDirectory)
+     } catch (error) {
+       this.setState({
+         isLoading:false
+       })
+       alert("저장 실패 : "+error.message)
+     }
+   }
+
+   uploadImage = async (imgDir) => {
+     if (this.state.image) {
+       const response = await fetch(this.state.image);
+       const blob = await response.blob();
+
+       try {
+         await uploadBytes(storageReference(storage, imgDir), blob)
+         .then(()=>{
+           this.setState({
+             isLoading:false
+           })
+           this.props.navigation.push('Diary')
+         })
+       } catch (error) {
+         this.setState({
+           isLoading:false
+         })
+         alert("저장 실패 : "+error.message)
+       }
+     }
+     else {
+       this.setState({
+         isLoading:false
+       })
+       this.props.navigation.push('Diary')
+     }
    }
 
    render () {
@@ -272,6 +358,13 @@
                   </TouchableOpacity>
                 </View>
               </View>
+
+              <Spinner
+                visible={this.state.isLoading}
+                textContent={'다이어리 업로드 중..'}
+                overlayColor={'rgba(0,0,0,0.6)'}
+                textStyle={{color: '#fff'}}
+              />
             </View>
           </TouchableWithoutFeedback>
         </KeyboardAvoidingView>

@@ -23,44 +23,30 @@
  import {bindActionCreators} from 'redux';
  
  class AuthComponent extends Component {
-     state = {
-         loading: false
-     }
 
      goWithoutLogin = () => {
         this.props.navigation.navigate("AppTabComponent")
      }
 
-     componentDidMount = () => {
+     componentDidMount() {
          getTokens((value)=>{
-             if(value[1][1] === null) {
-                 this.setState({loading: false})
-             }
-             else {
+             if(value[1][1] !== null) {
                  this.props.autoSignIn(value[2][1]).then(()=>{
-                     if(!this.props.User.auth.token) {
-                         this.setState({loading:false})
-                     }
-                     else {
+                     if(this.props.User.auth.token) {
                          setTokens(this.props.User.auth, ()=>{
                              this.goWithoutLogin();
                          })
                      }
                  })
              }
-             console.log("Get Tokens: ", value)
          });
+         
+         this.props.navigation.addListener('beforeRemove', (e)=>{
+             e.preventDefault();
+         })
      }
 
      render () {
-         if (this.state.loading) {
-            return (
-                <View style={styles.loading}>
-                    <ActivityIndicator/>
-                </View>
-            )
-         }
-         else {
             return (
                 <ScrollView contentContainerStyle={styles.container}>
                     <View>
@@ -71,7 +57,6 @@
                     </View>
                 </ScrollView>
             )
-         }
      }
  }
  

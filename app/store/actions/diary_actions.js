@@ -1,28 +1,29 @@
 import { GET_DIARIES } from "../types";
+import {auth, database} from '../../utils/misc';
+import { onAuthStateChanged } from "firebase/auth";
+import { ref as databaseReference, onValue } from "firebase/database"
 
-import axios from 'axios';
+export function getDiaries(User) {
+    // onAuthStateChanged(auth, (user)=>{
+    //     if(user) {
+    //         console.warn('user id is...', user)
+    //     }
+    //     else {
+    //         console.warn('not logged in')
+    //     }
+    // })
 
-export function getDiaries() {
-    const request = axios({
-        method: 'GET',
-        url: 'https://fsapp-c281f-default-rtdb.asia-southeast1.firebasedatabase.app/diary.json',
-    }).then(response=>{
-        const diaryData = [];
-        for (let key in response.data) {
-            if(response.data[key]){
-                diaryData.push({
-                    ...response.data[key]
-                })
+    return (dispatch) => {
+        onValue (databaseReference(database, `diary/${User.auth.userId}`), (snapshot) => {
+            const diaryData = [];
+            for (let key in snapshot.val()) {
+                if (snapshot.val()[key]) {
+                    diaryData.push({
+                        ...snapshot.val()[key]
+                    })
+                }
             }
-        }
-        return diaryData;
-    }).catch(error=>{
-        alert('Get Failed!!')
-        return false;
-    })
-
-    return {
-        type: GET_DIARIES,
-        payload: request
+            dispatch({type:GET_DIARIES, payload:diaryData})
+        })
     }
 }

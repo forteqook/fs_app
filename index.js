@@ -11,11 +11,12 @@ import {createStore, applyMiddleware, compose} from 'redux';
 import {Provider} from 'react-redux';
 import promiseMiddleware from 'redux-promise';
 import reducers from  './app/store/reducers';
+import thunk from 'redux-thunk';
 
 const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
 
 const createStoreWithMiddleware = createStore(reducers, composeEnhancers(
-    applyMiddleware(promiseMiddleware)
+    applyMiddleware(promiseMiddleware, thunk)
 ))
 
 const appRedux = () => (
